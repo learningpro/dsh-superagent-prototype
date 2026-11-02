@@ -1,7 +1,7 @@
 /** Pull request binding, lifecycle observation, and terminal IM notification helpers. */
 import { z } from 'zod'
 import { key, liveTicket, type Follow, type OutboundMessage, type ThreadFact, type Ticket } from '../core/index.ts'
-import type { Deployment } from '../deployment.ts'
+import { githubOf, type Deployment } from '../deployment.ts'
 import { sameName } from '../infra/text.ts'
 import type { SourceContext } from './host.ts'
 import { githubPage, SOURCE, UserSchema } from './github-trigger.ts'
@@ -22,7 +22,7 @@ export const pullOf = (ticket: Pick<Ticket, 'follows'>): number | undefined => p
 /** True when the PR was opened by the agent account from a branch in the configured repository (not a fork). */
 export const agentPull = (pr: { user: { login: string }; head?: { repo?: { full_name: string } | null } | null },
   deployment: Pick<Deployment, 'github' | 'repository'>): boolean =>
-  sameName(pr.user.login, deployment.github.login) && sameName(pr.head?.repo?.full_name ?? '', deployment.repository)
+  sameName(pr.user.login, githubOf(deployment).login) && sameName(pr.head?.repo?.full_name ?? '', deployment.repository)
 /** True when a branch belongs to the ticket: its last path segment is the ticket's short name, such as `agent/<name>`. */
 export const ticketBranch = (ticket: Pick<Ticket, 'execution'>, ref: string): boolean =>
   !!ticket.execution?.name && ref.split('/').at(-1) === ticket.execution.name
@@ -39,7 +39,7 @@ export function claimPull(ctx: SourceContext, ticketId: string, pr: Pull): strin
   const started = source?.source === SOURCE && source.meta.isPr === true && source.meta.number === pr.number
   const opened = agentPull(pr, ctx.deployment) && ticketBranch(ticket, pr.head.ref)
   if (!started && !opened) {
-    const { login } = ctx.deployment.github
+    const { login } = githubOf(ctx.deployment)
     return `PR does not belong to this ticket: use the source PR or a PR by ${login} from a branch whose last path segment is DSH_SUPERAGENT_NAME; omit pr_number when no PR exists`
   }
   const owner = ctx.tickets.open().find(item => pullsOf(item, true).includes(pr.number))

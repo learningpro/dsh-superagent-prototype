@@ -15,6 +15,10 @@ export interface SetupHost {
 
 const setupFields = (settings: Settings) =>
   JSON.stringify(Object.entries(SETUP_FIELDS).map(([id, keys]) => keys.map(key => settings.sources[id]?.config[key] ?? '')))
+/** The GitHub Source's accounts, or `null` while the Source is off, which leaves GitHub out of the deployment. */
+const githubInput = (settings: Settings) => settings.sources.github?.enabled === false ? null : settings.sources.github?.config
+/** The GitLab Source's accounts; an off Source resolves to nothing. */
+const gitlabInput = (settings: Settings) => settings.sources.gitlab?.enabled === false ? undefined : settings.sources.gitlab?.config
 export const setupChanged = (before: Settings, after: Settings): boolean => setupFields(before) !== setupFields(after)
 
 /**
@@ -61,7 +65,7 @@ export class Setup {
   async checkAccounts(block: SettingsBlock, settings: Settings): Promise<void> {
     const { machine } = this.host
     const check = block === 'source:feishu' ? resolveFeishuBot(machine, settings.sources.feishu?.config, this.probe())
-      : resolveDeployment(machine, settings.sources.github?.config, this.probe())
+      : resolveDeployment(machine, githubInput(settings), this.probe(), undefined, gitlabInput(settings))
     await check.catch((error: unknown) => { if (!(error instanceof SetupError) || error.place === block.slice(7)) throw error })
   }
   async blockCommands(blocked: readonly string[]): Promise<void> {
@@ -76,7 +80,7 @@ export class Setup {
   private async resolve(settings: Settings): Promise<Deployment> {
     const { context, machine, lifetime } = this.host
     const probe = this.probe()
-    const deployment = await resolveDeployment(machine, settings.sources.github?.config, probe)
+    const deployment = await resolveDeployment(machine, githubInput(settings), probe, undefined, gitlabInput(settings))
     const feishu = await resolveFeishuBot(machine, settings.sources.feishu?.config, probe).catch((error: unknown) => {
       if (!(error instanceof SetupError)) throw error
       this.feishuProblem = error.problem

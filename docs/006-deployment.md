@@ -28,6 +28,23 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
 ## Accounts
 
+### Agent GitLab account (self-hosted or gitlab.com)
+
+GitHub is optional. A team on GitLab, including a self-hosted server, turns the GitHub Source off and the GitLab Source on; Feishu can be used with either. At least one of GitHub and GitLab must be set up.
+
+1. Create a GitLab user for the agent and add it to the project with the Developer role or higher.
+2. Give it a `glab` (2.x or later) that uses only its own credentials, for example a wrapper `~/.local/bin/glab-agent`:
+
+   ```sh
+   #!/bin/sh
+   GLAB_CONFIG_DIR="$HOME/.config/glab-agent" exec glab "$@"
+   ```
+
+   Sign it in once with `glab-agent auth login --hostname gitlab.example.com` and a personal access token with the `api` scope.
+3. On the GitLab card of **Settings › Sources**, set the server host (`gitlab.example.com`), the project (`group/name`) and the CLI. Saving checks the account, the project and the push access, and restarts dsh-superagent.
+
+Requests arrive as the agent account's to-dos (it was assigned, asked to review, or mentioned) and as new notes on the Issues and merge requests it follows; the to-do is marked done once taken in. Replies are notes. The GitLab Source does not yet follow merge requests to merge, observe the project's pipelines, or receive unaddressed Issues; Workers open merge requests with `glab` and report them in their text.
+
 ### Agent GitHub account
 
 1. Create a GitHub user account for the agent and give it write access to the repository. A GitHub App cannot be the agent, because dsh-superagent reads the account's notifications.
@@ -199,7 +216,7 @@ A refusal has a status and `error`, its English text:
 
 The blocks:
 
-- `source:github`, `source:feishu`: `{"enabled": true, "config": {…}}`. GitHub's config has `repository` and `cli`, and the switches `observeIssues`, `observePulls`, `observeComments` and `observeCi`, off by default, which receive every new Issue, new pull request and comment in the repository and the default branch's CI; Feishu's has `cli`, `chats` as `[{"chatId": "oc_…", "name": "…", "listen": "mentions"}]` (or `"all"`), `directMessages`, and `otherChats` as `"none"` or `"mentions"`.
+- `source:github`, `source:gitlab`, `source:feishu`: `{"enabled": true, "config": {…}}`. GitLab's config has `host`, `project` and `cli`; GitHub's config has `repository` and `cli`, and the switches `observeIssues`, `observePulls`, `observeComments` and `observeCi`, off by default, which receive every new Issue, new pull request and comment in the repository and the default branch's CI; Feishu's has `cli`, `chats` as `[{"chatId": "oc_…", "name": "…", "listen": "mentions"}]` (or `"all"`), `directMessages`, and `otherChats` as `"none"` or `"mentions"`.
 - `policy`: `{"rules": […], "sources": {"github": {"allowed": [{"id": "<login>"}], "bots": [{"id": "dependabot[bot]"}]}, "feishu": {"allowed": [{"id": "ou_…", "name": "…"}], "syncChat": "oc_…", "admission": {"oc_…": {"unlistedAddressed": "explicit"}}}}}`. `bots` lists the bots whose messages may become inferred candidates. An `admission` row is keyed by chat id, `other` or `direct` for Feishu, and by `issues`, `pulls`, `comments` or `ci` for GitHub; an unset cell takes its default (see [002 Authorization](002-authorization.md)).
 - `eval`: `mode`, `timeoutSeconds` and `model`.
 - `executor`: `model`, `maxWorkers`, `directory`, `prepare` and `blockedCommands`. The processing pause is a setting of its own, `paused`, which `POST executor/pause` sets.

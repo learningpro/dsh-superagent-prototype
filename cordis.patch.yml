@@ -6,6 +6,10 @@
       name: dsh-superagent
     - id: dsh-superagent-github
       name: dsh-superagent/github-watch
+    # Optional GitLab Source (gitlab.com or a self-hosted server); requires configuring a glab CLI, host and project after enabling.
+    - id: dsh-superagent-gitlab
+      name: dsh-superagent/gitlab-watch
+      disabled: true
     # Optional Feishu Source; requires configuring a bot CLI after enabling.
     - id: dsh-superagent-feishu
       name: dsh-superagent/feishu-watch
